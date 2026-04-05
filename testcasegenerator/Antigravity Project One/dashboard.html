@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - FirstFintech QA Engine</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar injected via common.js -->
+        
+        <main class="main-content">
+            <!-- Topbar injected via common.js -->
+            
+            <div class="page-body">
+                <div class="dashboard-grid" id="statsGrid">
+                    <!-- Stats loaded dynamically -->
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Test Generation Trends (Last 7 Days)</div>
+                    </div>
+                    <div>
+                        <canvas id="generationChart" height="80"></canvas>
+                    </div>
+                </div>
+
+                <div class="form-row mt-3">
+                    <div class="form-col card" style="margin-right: 24px;">
+                        <div class="card-header">
+                            <div class="card-title">Recent Activity</div>
+                            <a href="history.html" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;">View All</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Module Type</th>
+                                        <th>Items</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentActivityTable">
+                                    <!-- Populated via API -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="form-col card">
+                        <div class="card-header">
+                            <div class="card-title">Generation by Module</div>
+                        </div>
+                        <div style="max-height: 250px; display: flex; justify-content: center;">
+                            <canvas id="moduleChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer injected via common.js -->
+        </main>
+    </div>
+
+    <!-- Application scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

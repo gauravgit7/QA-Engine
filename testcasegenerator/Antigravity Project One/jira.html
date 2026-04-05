@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira Test Case Generator - QA Engine</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar injected via common.js -->
+        <main class="main-content">
+            <!-- Topbar injected via common.js -->
+            
+            <div class="page-body">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Jira Test Case Generator</div>
+                    </div>
+                    
+                    <div class="alert alert-error" id="formError"></div>
+                    <div class="alert alert-success" id="formSuccess"></div>
+
+                    <form id="jiraForm" style="max-width: 600px;">
+                        <div class="form-group">
+                            <label class="form-label" for="jiraTicketId">Jira Story / Task ID</label>
+                            <div style="display: flex; gap: 16px;">
+                                <input type="text" id="jiraTicketId" class="form-control" placeholder="E.g., PROJ-1234" required>
+                                <button type="submit" class="btn btn-primary" id="generateBtn" style="white-space: nowrap;">
+                                    <i class="fas fa-sync-alt"></i> Fetch & Generate
+                                </button>
+                            </div>
+                            <span class="form-text mt-1">Make sure you have configured your Jira Integration in the Configuration page.</span>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Results Table -->
+                <div class="card d-none" id="resultsCard">
+                    <div class="card-header">
+                        <div class="card-title">Generated Test Cases</div>
+                        <button class="btn btn-secondary" onclick="exportTableToExcel('casesTable', 'Jira_Test_Cases')">
+                            <i class="fas fa-file-excel" style="color: #217346;"></i> Export to Excel
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table" id="casesTable">
+                            <thead>
+                                <tr>
+                                    <th>Test Case ID</th>
+                                    <th>Title</th>
+                                    <th>Preconditions</th>
+                                    <th>Steps</th>
+                                    <th>Expected Result</th>
+                                    <th>Priority</th>
+                                </tr>
+                            </thead>
+                            <tbody id="casesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/jira.js"></script>
+</body>
+</html>

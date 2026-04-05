@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story/Feature Test Case Generator - QA Engine</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar injected via common.js -->
+        <main class="main-content">
+            <!-- Topbar injected via common.js -->
+            
+            <div class="page-body">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Generate Feature / Story Test Cases</div>
+                    </div>
+                    
+                    <div class="alert alert-error" id="formError"></div>
+
+                    <form id="storyForm">
+                        <div class="form-group">
+                            <label class="form-label" for="storyContext">As a User... (Story Context)</label>
+                            <textarea id="storyContext" class="form-control" placeholder="E.g., As an admin, I want to be able to reset user passwords so that locked out users can regain access." style="min-height: 100px;" required></textarea>
+                            <span class="form-text">Describe the story or acceptance criteria in detail.</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Generation Method</label>
+                            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="genMethod" value="llm" checked> AI Standard Engine
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="genMethod" value="rules"> Advanced Rules Engine (Offline)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label class="form-label">Optional Supporting Document</label>
+                                    <input type="file" id="fileUpload" name="fileUpload" class="form-control" style="background: white;" />
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label class="form-label" for="storyId">Story ID (Optional)</label>
+                                    <input type="text" id="storyId" class="form-control" placeholder="e.g. FF-482">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-2" style="text-align: right;">
+                            <button type="submit" class="btn btn-primary" id="generateBtn">
+                                <i class="fas fa-magic"></i> Generate Cases
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Results Table -->
+                <div class="card d-none" id="resultsCard">
+                    <div class="card-header">
+                        <div class="card-title">Generated Test Cases</div>
+                        <button class="btn btn-secondary" onclick="exportTableToExcel('casesTable', 'Story_Test_Cases')">
+                            <i class="fas fa-file-excel" style="color: #217346;"></i> Export to Excel
+                        </button>
+                    </div>
+                    
+                    <div id="fallbackWarning" class="alert alert-error" style="display: none; margin-bottom: 20px;"></div>
+                    <div id="genMetadata" style="display: flex; gap: 20px; font-size: 0.85rem; margin-bottom: 20px; color: var(--text-muted); background: var(--bg-color); padding: 10px; border-radius: var(--border-radius);"></div>
+
+                    <div class="table-responsive">
+                        <table class="table" id="casesTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Preconditions</th>
+                                    <th>Steps</th>
+                                    <th>Expected Result</th>
+                                    <th>Type</th>
+                                    <th>Test Data</th>
+                                    <th>Priority</th>
+                                </tr>
+                            </thead>
+                            <tbody id="casesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/story.js"></script>
+</body>
+</html>

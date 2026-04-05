@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History - QA Engine</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar injected via common.js -->
+        <main class="main-content">
+            <!-- Topbar injected via common.js -->
+            
+            <div class="page-body">
+                <div class="card">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 16px;">
+                        <div class="card-title">Generation History</div>
+                        <div class="d-flex" style="gap: 16px;">
+                            <input type="date" id="filterDate" class="form-control" style="width: auto;">
+                            <select id="filterType" class="form-control" style="width: auto;">
+                                <option value="">All Modules</option>
+                                <option value="UAT">UAT</option>
+                                <option value="Story">Story/Feature</option>
+                                <option value="Jira">Jira</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="applyFilters()">Filter</button>
+                            <button class="btn btn-secondary" onclick="exportTableToExcel('historyTable', 'QA_History')">
+                                <i class="fas fa-file-excel"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-error" id="formError"></div>
+
+                    <div class="table-responsive">
+                        <table class="table" id="historyTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Generation ID</th>
+                                    <th>Module Type</th>
+                                    <th>Items Generated</th>
+                                    <th>Author</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <!-- Loaded via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/history.js"></script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+document.addEventListener('DOMContentLoaded', () => {
+
+    // File upload elements
+    const fileUpload = document.getElementById('fileUpload');
+    const dropZone = document.getElementById('dropZone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const manualInput = document.getElementById('manualInput');
+
+    // Result elements
+    const resultsCard = document.getElementById('resultsCard');
+    const casesTableBody = document.getElementById('casesTableBody');
+    const generateBtn = document.getElementById('generateBtn');
+    const formError = document.getElementById('formError');
+
+    // State
+    let allTestCases = [];
+    let filteredCases = [];
+    let currentPage = 1;
+    const PAGE_SIZE = 15;
+
+    // ── File handlers ──
+    window.removeFile = function () {
+        fileUpload.value = '';
+        fileInfo.classList.add('d-none');
+        dropZone.style.display = 'block';
+    };
+
+    fileUpload.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            dropZone.style.display = 'none';
+            fileName.textContent = file.name;
+            fileInfo.classList.remove('d-none');
+            manualInput.placeholder = "File uploaded. Manual input is now optional.";
+        }
+    });
+
+    // ── Form Submit ──
+    document.getElementById('uatForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.style.display = 'none';
+
+        const hasFile = fileUpload.files.length > 0;
+        const hasText = manualInput.value.trim().length > 0;
+
+        if (!hasFile && !hasText) {
+            formError.textContent = 'Please provide either a document upload OR manual context input.';
+            formError.style.display = 'block';
+            return;
+        }
+
+        const originalBtnHtml = generateBtn.innerHTML;
+        const genMethod = document.querySelector('input[name="genMethod"]:checked').value;
+        
+        // Dynamic loading for Ollama
+        let loadingInterval;
+        if (genMethod === 'llm') {
+            const messages = [
+                'Analyzing context...',
+                'Waking up local Llama 3 model...',
+                'Generating test scenarios...',
+                'Ollama is working hard (Local AI)...',
+                'Refining acceptance criteria...',
+                'Almost there, finalizing JSON...'
+            ];
+            let msgIdx = 0;
+            generateBtn.innerHTML = `<div class="spinner"></div> ${messages[0]}`;
+            loadingInterval = setInterval(() => {
+                msgIdx = (msgIdx + 1) % messages.length;
+                generateBtn.innerHTML = `<div class="spinner"></div> ${messages[msgIdx]}`;
+            }, 3000);
+        } else {
+            generateBtn.innerHTML = '<div class="spinner"></div> Generating with Rule Engine...';
+        }
+        
+        generateBtn.disabled = true;
+
+        try {
+            const formData = new FormData();
+
+            if (hasFile) formData.append('file', fileUpload.files[0]);
+            if (hasText) formData.append('manual_text', manualInput.value.trim());
+
+            const epicId = document.getElementById('epicId').value.trim();
+            const storyId = document.getElementById('storyId').value.trim();
+            const testCaseId = document.getElementById('testCaseId').value.trim();
+            const genMethod = document.querySelector('input[name="genMethod"]:checked').value;
+            const targetCount = document.getElementById('targetCount').value;
+            const domainHint = document.getElementById('domainHint').value;
+
+            if (epicId) formData.append('epic_id', epicId);
+            if (storyId) formData.append('story_id', storyId);
+            if (testCaseId) formData.append('test_case_id', testCaseId);
+            formData.append('generation_method', genMethod);
+            formData.append('target_count', targetCount);
+            if (domainHint) formData.append('domain_hint', domainHint);
+
+            const response = await AppAPI.uploadRequest('/generate/uat', formData);
+
+            if (response.success && response.testCases) {
+                allTestCases = response.testCases;
+
+                // Document Stats
+                renderDocStats(response);
+
+                // Coverage Dashboard
+                renderCoverage(response.coverage_report, response.domain_detected);
+
+                // Metadata bar
+                renderMetadata(response);
+
+                // Fallback warning
+                const warningDiv = document.getElementById('fallbackWarning');
+                if (response.fallback_triggered) {
+                    warningDiv.style.display = 'block';
+                    warningDiv.textContent = `⚠ Fallback triggered: ${response.fallback_reason || 'LLM unavailable'}. Results generated by Rules Engine.`;
+                } else {
+                    warningDiv.style.display = 'none';
+                }
+
+                // Render table
+                document.getElementById('totalCount').textContent = allTestCases.length;
+                currentPage = 1;
+                applyFilters();
+
+                resultsCard.classList.remove('d-none');
+                resultsCard.scrollIntoView({ behavior: 'smooth' });
+            }
+
+        } catch (error) {
+            formError.textContent = error.message || 'Error occurred while generating test cases.';
+            formError.style.display = 'block';
+        } finally {
+            if (loadingInterval) clearInterval(loadingInterval);
+            generateBtn.innerHTML = originalBtnHtml;
+            generateBtn.disabled = false;
+        }
+    });
+
+    // ── Document Stats ──
+    function renderDocStats(response) {
+        const card = document.getElementById('docStatsCard');
+        const bar = document.getElementById('docStatsBar');
+        const stats = response.document_stats;
+        const domain = response.domain_detected || 'generic';
+        const reqs = response.total_requirements_found || 0;
+
+        let chips = `
+            <span class="stat-chip"><i class="fas fa-globe"></i> Domain: ${domain.charAt(0).toUpperCase() + domain.slice(1)}</span>
+            <span class="stat-chip"><i class="fas fa-list-ol"></i> Requirements: ${reqs}</span>
+            <span class="stat-chip"><i class="fas fa-vials"></i> Test Cases: ${response.total_generated}</span>
+        `;
+        if (stats) {
+            chips += `<span class="stat-chip"><i class="fas fa-file-word"></i> Words: ${stats.word_count.toLocaleString()}</span>`;
+            if (stats.page_count) chips += `<span class="stat-chip"><i class="fas fa-file-pdf"></i> Pages: ${stats.page_count}</span>`;
+        }
+        bar.innerHTML = chips;
+        card.classList.remove('d-none');
+    }
+
+    // ── Coverage Dashboard ──
+    function renderCoverage(coverage, domain) {
+        if (!coverage) return;
+        const card = document.getElementById('coverageCard');
+        const dashboard = document.getElementById('coverageDashboard');
+
+        const items = [
+            { label: 'Overall Coverage', value: coverage.overall_coverage_percentage, icon: 'fa-shield-halved' },
+            { label: 'Requirement Coverage', value: coverage.requirement_coverage?.coverage_percentage || 0, icon: 'fa-clipboard-check' },
+            { label: 'Role Coverage', value: coverage.role_coverage?.coverage_percentage || 0, icon: 'fa-users' },
+            { label: 'Module Coverage', value: coverage.module_coverage?.coverage_percentage || 0, icon: 'fa-puzzle-piece' },
+        ];
+
+        dashboard.innerHTML = items.map(item => {
+            const cls = item.value >= 80 ? 'high' : item.value >= 50 ? 'medium' : 'low';
+            const color = item.value >= 80 ? '#20c997' : item.value >= 50 ? '#ffc107' : '#dc3545';
+            return `<div class="coverage-item">
+                <h4><i class="fas ${item.icon}" style="margin-right: 6px;"></i>${item.label}</h4>
+                <div class="pct" style="color: ${color}">${item.value.toFixed(1)}%</div>
+                <div class="coverage-bar"><div class="coverage-fill ${cls}" style="width: ${item.value}%"></div></div>
+            </div>`;
+        }).join('');
+
+        // Type distribution
+        if (coverage.test_type_distribution) {
+            const dist = coverage.test_type_distribution;
+            const distHtml = Object.entries(dist).map(([type, count]) =>
+                `<span class="stat-chip">${type}: ${count}</span>`
+            ).join('');
+            dashboard.innerHTML += `<div class="coverage-item" style="grid-column: 1 / -1;">
+                <h4><i class="fas fa-chart-pie" style="margin-right: 6px;"></i>Test Type Distribution</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">${distHtml}</div>
+            </div>`;
+        }
+
+        card.classList.remove('d-none');
+    }
+
+    // ── Metadata Bar ──
+    function renderMetadata(response) {
+        const meta = document.getElementById('genMetadata');
+        meta.innerHTML = `
+            <span><strong>Method:</strong> ${response.method_used === "rules" ? "Rules Engine" : response.method_used}</span>
+            <span><strong>Time:</strong> ${response.generation_time.toFixed(2)}s</span>
+            <span><strong>Total:</strong> ${response.total_generated} test cases</span>
+            ${response.method_used !== "rules" ? `<span><strong>Tokens:</strong> ${response.token_usage}</span><span><strong>Cost:</strong> $${response.cost.toFixed(5)}</span>` : ''}
+        `;
+        meta.style.display = 'flex';
+    }
+
+    // ── Filtering ──
+    window.applyFilters = function() {
+        const search = document.getElementById('filterSearch').value.toLowerCase();
+        const priority = document.getElementById('filterPriority').value;
+        const type = document.getElementById('filterType').value;
+
+        filteredCases = allTestCases.filter(tc => {
+            const matchSearch = !search ||
+                tc.title.toLowerCase().includes(search) ||
+                tc.id.toLowerCase().includes(search) ||
+                (tc.steps || '').toLowerCase().includes(search) ||
+                (tc.expectedResult || '').toLowerCase().includes(search);
+            const matchPriority = !priority || tc.priority === priority;
+            const matchType = !type || tc.test_type === type;
+            return matchSearch && matchPriority && matchType;
+        });
+
+        currentPage = 1;
+        renderPage();
+    };
+
+    // ── Pagination ──
+    window.changePage = function(delta) {
+        const maxPage = Math.ceil(filteredCases.length / PAGE_SIZE);
+        currentPage = Math.max(1, Math.min(currentPage + delta, maxPage));
+        renderPage();
+    };
+
+    function renderPage() {
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end = start + PAGE_SIZE;
+        const pageCases = filteredCases.slice(start, end);
+
+        let html = '';
+        pageCases.forEach(tc => {
+            let badgeClass = 'badge-medium';
+            if (tc.priority === 'High') badgeClass = 'badge-high';
+            else if (tc.priority === 'Low') badgeClass = 'badge-low';
+
+            let typeBadge = 'badge-medium';
+            if (tc.test_type === 'Negative' || tc.test_type === 'Security') typeBadge = 'badge-high';
+            else if (tc.test_type === 'Positive') typeBadge = 'badge-low';
+
+            const formatSteps = (tc.steps || '').replace(/\\n|\n/g, '<br>');
+
+            html += `
+                <tr>
+                    <td><strong>${tc.id}</strong></td>
+                    <td>${tc.title}</td>
+                    <td><span class="badge ${typeBadge}" style="font-size: 0.75rem;">${tc.test_type}</span></td>
+                    <td style="font-size: 0.85rem;">${tc.user_role || 'User'}</td>
+                    <td class="text-muted" style="font-size: 0.85rem;">${tc.preconditions}</td>
+                    <td style="font-size: 0.85rem;">${formatSteps}</td>
+                    <td style="font-size: 0.85rem;">${tc.expectedResult}</td>
+                    <td style="font-size: 0.8rem; max-width: 160px; word-break: break-word;">${tc.test_data || 'N/A'}</td>
+                    <td><span class="badge ${badgeClass}">${tc.priority}</span></td>
+                </tr>
+            `;
+        });
+        casesTableBody.innerHTML = html;
+
+        // Update pagination info
+        const total = filteredCases.length;
+        const maxPage = Math.ceil(total / PAGE_SIZE) || 1;
+        document.getElementById('pageInfo').textContent = `Showing ${start + 1}–${Math.min(end, total)} of ${total} (Page ${currentPage}/${maxPage})`;
+        document.getElementById('prevBtn').disabled = currentPage <= 1;
+        document.getElementById('nextBtn').disabled = currentPage >= maxPage;
+    }
+
+    // ── CSV Export ──
+    window.exportToCSV = function() {
+        if (!allTestCases.length) return;
+        const headers = ['ID', 'Title', 'Type', 'Role', 'Preconditions', 'Steps', 'Expected Result', 'Test Data', 'Priority', 'Business Context'];
+        const rows = allTestCases.map(tc => [
+            tc.id,
+            `"${(tc.title || '').replace(/"/g, '""')}"`,
+            tc.test_type,
+            tc.user_role || '',
+            `"${(tc.preconditions || '').replace(/"/g, '""')}"`,
+            `"${(tc.steps || '').replace(/"/g, '""').replace(/\n/g, ' | ')}"`,
+            `"${(tc.expectedResult || '').replace(/"/g, '""')}"`,
+            `"${(tc.test_data || '').replace(/"/g, '""')}"`,
+            tc.priority,
+            `"${(tc.business_context || '').replace(/"/g, '""')}"`,
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'UAT_Test_Cases.csv';
+        link.click();
+    };
+});
