@@ -1,0 +1,94 @@
+# FirstFintech QA Engine - Administrator Guide
+
+This document covers everything you need to know about operating, managing, and maintaining the FirstFintech QA Engine.
+
+## 1. Running the Application
+
+You do not need me to run it for you! When you start working or restart your computer, you can run the application yourself by opening **two separate terminal windows**.
+
+### Step 1: Start the Backend (FastAPI)
+Open a terminal, navigate to your project directory, and run the Python backend:
+```powershell
+cd "C:\Users\subed\Downloads\QA Engine\testcasegenerator\Antigravity Project One\backend"
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+> [!NOTE]
+> The `--reload` flag means the server will automatically restart if you edit any Python file.
+
+### Step 2: Start the Frontend (HTML/JS)
+Open a *second* terminal window in your main project folder and start a static file server:
+```powershell
+cd "C:\Users\subed\Downloads\QA Engine\testcasegenerator\Antigravity Project One"
+python -m http.server 5500
+```
+> [!TIP]
+> After running both, simply open your web browser and go to `http://localhost:5500`.
+
+---
+
+## 2. Accessing the Database
+
+Currently, the application uses **SQLite** for development ease. The entire database is stored in a single file located at:
+`backend/firstfintech_qa.db`
+
+**How to open and edit it:**
+1. **VS Code Extension (Recommended)**: Install the "SQLite Viewer" or "SQLite" extension in VS Code. You can just click on the `.db` file to view the tables natively.
+2. **Dedicated App**: Download a free tool like [DB Browser for SQLite](https://sqlitebrowser.org/). Open the `.db` file through the app to view and edit tables directly.
+
+> [!WARNING]
+> If you ever want to migrate to a production database like PostgreSQL, you just need to change the `DATABASE_URL` inside `backend/.env` (e.g., `DATABASE_URL=postgresql://user:password@localhost/dbname`).
+
+---
+
+## 3. Token Management & Authentication
+
+The application uses **JWT (JSON Web Tokens)** for stateless authentication.
+
+**Where is it stored?**
+When you log in, the backend sends back a token. Your browser saves this in its **Local Storage** under the key `jwt_token`. 
+You can see it by opening Chrome DevTools (F12) -> Application Tab -> Local Storage.
+
+**How is it managed?**
+- In `js/api.js`, the `AppAPI` object automatically retrieves this token and attaches it to the `Authorization: Bearer <token>` header for every network request.
+- If the token expires or is invalid, the backend returns a `401 Unauthorized` error. `AppAPI` catches this, deletes the token from Local Storage, and automatically kicks the user back to `index.html`.
+
+---
+
+## 4. How to Change Username or Password
+
+Right now, your admin credentials are seeded automatically when the app first launches (`admin@firstfintech.com` / `admin123`). 
+
+**Method 1: Direct Database Edit (Username only)**
+You can open `firstfintech_qa.db` using DB Browser for SQLite, go to the `users` table, and change the `username` or `email` fields directly and save. 
+*(Note: You cannot easily change the password this way because passwords are encrypted using `bcrypt` hashes).*
+
+**Method 2: Create a new user account via API**
+The backend actually has a built-in registration route! You can create a new account by sending a special request.
+Run this command in PowerShell to register a new user:
+```powershell
+$body = @{ 
+    username="Your Name"; 
+    email="newuser@example.com"; 
+    password="newpassword" 
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8000/auth/register" -Method Post -Body $body -ContentType "application/json"
+```
+
+> [!TIP]
+> **Future Feature**: We can build a "Profile Settings" UI page in the future that lets you change your password directly from the frontend if you'd like!
+
+---
+
+## 5. Other Important Things to Know
+
+### The `.env` File
+In the `backend/` folder, there is a `.env` file. This holds your super secret variables:
+- `OPENAI_API_KEY`: If you want the AI test case generation to actually talk to ChatGPT instead of using mock data, paste your real API key here!
+- `SECRET_KEY`: This is a random string used to secure your JWT tokens. In a production app, you should change this to a long, random string.
+
+### API Documentation (Swagger)
+FastAPI automatically generates beautiful API documentation for you.
+While your backend is running, go to:
+**http://localhost:8000/docs**
+From there, you can see every single API route we built, what data it expects, and you can even test sending requests directly from the UI without writing any code!
